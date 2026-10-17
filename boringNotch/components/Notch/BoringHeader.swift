@@ -23,6 +23,20 @@ struct BoringHeader: View {
                 } else if vm.notchState == .open {
                     EmptyView()
                 }
+
+                if vm.notchState == .open {
+                    Spacer(minLength: 0)
+
+                    BoringFaceRosterView(
+                        styles: boringFaceStyles,
+                        personalityEnabled: facePersonalityEnabled,
+                        faceWidth: 24,
+                        faceHeight: 18,
+                        fillsWidth: false
+                    )
+                    .padding(.trailing, 14)
+                    .allowsHitTesting(false)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .opacity(vm.notchState == .closed ? 0 : 1)
@@ -30,25 +44,12 @@ struct BoringHeader: View {
             .zIndex(2)
 
             if vm.notchState == .open {
-                ZStack {
-                    Rectangle()
-                        .fill(NSScreen.screen(withUUID: coordinator.selectedScreenUUID)?.safeAreaInsets.top ?? 0 > 0 ? .black : .clear)
-                        .frame(width: vm.closedNotchSize.width)
-                        .mask {
-                            NotchShape()
-                        }
-
-                    BoringFaceRosterView(
-                        styles: boringFaceStyles,
-                        personalityEnabled: facePersonalityEnabled,
-                        faceWidth: 24,
-                        faceHeight: 18,
-                        fillsWidth: true
-                    )
+                Rectangle()
+                    .fill(NSScreen.screen(withUUID: coordinator.selectedScreenUUID)?.safeAreaInsets.top ?? 0 > 0 ? .black : .clear)
                     .frame(width: vm.closedNotchSize.width)
-                    .padding(.horizontal, 14)
-                    .allowsHitTesting(false)
-                }
+                    .mask {
+                        NotchShape()
+                    }
             }
 
             HStack(spacing: 4) {
