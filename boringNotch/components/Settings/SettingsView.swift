@@ -1164,6 +1164,7 @@ struct Appearance: View {
     @Default(.useMusicVisualizer) var useMusicVisualizer
     @Default(.customVisualizers) var customVisualizers
     @Default(.selectedVisualizer) var selectedVisualizer
+    @Default(.boringFaceStyle) var boringFaceStyle
 
     let icons: [String] = ["logo2"]
     @State private var selectedIcon: String = "logo2"
@@ -1182,6 +1183,41 @@ struct Appearance: View {
 
             } header: {
                 Text("General")
+            }
+
+            Section {
+                Defaults.Toggle(key: .showNotHumanFace) {
+                    Text("Show face while inactive")
+                }
+
+                Picker("Face", selection: $boringFaceStyle) {
+                    ForEach(BoringFaceStyle.allCases) { style in
+                        HStack(spacing: 10) {
+                            MinimalFaceFeatures(style: style, height: 20, width: 30)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(style.rawValue)
+                                Text(style.detail)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .tag(style)
+                    }
+                }
+
+                HStack(spacing: 12) {
+                    MinimalFaceFeatures(style: boringFaceStyle, height: 40, width: 60)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Preview")
+                            .font(.headline)
+                        Text(boringFaceStyle.detail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+            } header: {
+                Text("Notch face")
             }
 
             Section {
@@ -1386,9 +1422,6 @@ struct Appearance: View {
                         .tag(MirrorShapeEnum.circle)
                     Text("Square")
                         .tag(MirrorShapeEnum.rectangle)
-                }
-                Defaults.Toggle(key: .showNotHumanFace) {
-                    Text("Show cool face animation while inactive")
                 }
             } header: {
                 HStack {

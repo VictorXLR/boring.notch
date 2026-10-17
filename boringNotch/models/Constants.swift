@@ -68,6 +68,28 @@ enum OptionKeyAction: String, CaseIterable, Identifiable, Defaults.Serializable 
     var id: String { self.rawValue }
 }
 
+enum BoringFaceStyle: String, CaseIterable, Identifiable, Defaults.Serializable {
+    case neonWink = "Neon Wink"
+    case sleepy = "Sleepy"
+    case pixelBot = "Pixel Bot"
+    case starstruck = "Starstruck"
+
+    var id: String { rawValue }
+
+    var detail: String {
+        switch self {
+        case .neonWink:
+            return "A sly wink with a neon grin"
+        case .sleepy:
+            return "Soft eyes for low-key nights"
+        case .pixelBot:
+            return "A tiny retro arcade companion"
+        case .starstruck:
+            return "Bright-eyed and a little dramatic"
+        }
+    }
+}
+
 extension Defaults.Keys {
     // MARK: General
     static let menubarIcon = Key<Bool>("menubarIcon", default: true)
@@ -104,7 +126,8 @@ extension Defaults.Keys {
     static let enableShadow = Key<Bool>("enableShadow", default: true)
     static let cornerRadiusScaling = Key<Bool>("cornerRadiusScaling", default: true)
 
-    static let showNotHumanFace = Key<Bool>("showNotHumanFace", default: false)
+    static let showNotHumanFace = Key<Bool>("showNotHumanFace", default: true)
+    static let boringFaceStyle = Key<BoringFaceStyle>("boringFaceStyle", default: .neonWink)
     static let tileShowLabels = Key<Bool>("tileShowLabels", default: false)
     static let showCalendar = Key<Bool>("showCalendar", default: false)
     static let hideCompletedReminders = Key<Bool>("hideCompletedReminders", default: true)
