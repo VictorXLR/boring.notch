@@ -372,23 +372,30 @@ struct ContentView: View {
 
     @ViewBuilder
     func BoringFaceAnimation() -> some View {
-        ZStack {
+        // Keep the original idle-notch geometry: the clear leading inset and
+        // the face on the trailing side keep it out of the physical camera
+        // notch on real MacBook Pro displays.
+        HStack(spacing: 0) {
+            Rectangle()
+                .fill(.clear)
+                .frame(
+                    width: max(0, vm.effectiveClosedNotchHeight - 12),
+                    height: max(0, vm.effectiveClosedNotchHeight - 12)
+                )
+
             Rectangle()
                 .fill(.black)
+                .frame(width: max(0, vm.closedNotchSize.width - 20))
+
             BoringFaceRosterView(
                 styles: boringFaceStyles,
                 personalityEnabled: facePersonalityEnabled,
-                faceWidth: 38,
-                faceHeight: 26,
-                fillsWidth: true
+                faceWidth: 24,
+                faceHeight: 18,
+                fillsWidth: false
             )
-            .padding(.horizontal, 28)
         }
-        .frame(
-            width: vm.closedNotchSize.width,
-            height: vm.effectiveClosedNotchHeight,
-            alignment: .center
-        )
+        .frame(height: vm.effectiveClosedNotchHeight, alignment: .center)
     }
 
     @ViewBuilder
