@@ -76,8 +76,7 @@ struct ContentView: View {
             && coordinator.musicLiveActivityEnabled && !vm.hideOnClosed
         {
             chinWidth += (2 * max(0, vm.effectiveClosedNotchHeight - 12) + 20)
-        } else if vm.notchState == .closed
-            && !musicManager.isPlaying && Defaults[.showNotHumanFace]
+        } else if vm.notchState == .closed && Defaults[.showNotHumanFace]
         {
             chinWidth += (2 * max(0, vm.effectiveClosedNotchHeight - 12) + 20)
         }
@@ -295,7 +294,7 @@ struct ContentView: View {
                       } else if (!coordinator.expandingView.show || coordinator.expandingView.type == .music) && vm.notchState == .closed && (musicManager.isPlaying || !musicManager.isPlayerIdle) && coordinator.musicLiveActivityEnabled && !vm.hideOnClosed {
                           MusicLiveActivity()
                               .frame(alignment: .center)
-                      } else if vm.notchState == .closed && !musicManager.isPlaying && Defaults[.showNotHumanFace]  {
+                      } else if vm.notchState == .closed && Defaults[.showNotHumanFace]  {
                           BoringFaceAnimation()
                        } else if vm.notchState == .open {
                            BoringHeader()
