@@ -14,12 +14,26 @@ import SwiftUI
 
 struct MusicPlayerView: View {
     @EnvironmentObject var vm: BoringViewModel
+    @Default(.boringFaceStyles) private var boringFaceStyles
+    @Default(.facePersonalityEnabled) private var facePersonalityEnabled
     let albumArtNamespace: Namespace.ID
 
     var body: some View {
-        HStack {
-            AlbumArtView(vm: vm, albumArtNamespace: albumArtNamespace).padding(.all, 5)
-            MusicControlsView().drawingGroup().compositingGroup()
+        ZStack(alignment: .topTrailing) {
+            HStack {
+                AlbumArtView(vm: vm, albumArtNamespace: albumArtNamespace).padding(.all, 5)
+                MusicControlsView().drawingGroup().compositingGroup()
+            }
+
+            BoringFaceRosterView(
+                styles: boringFaceStyles,
+                personalityEnabled: facePersonalityEnabled,
+                faceWidth: 28,
+                faceHeight: 20
+            )
+            .padding(.top, 7)
+            .padding(.trailing, 14)
+            .allowsHitTesting(false)
         }
     }
 }
