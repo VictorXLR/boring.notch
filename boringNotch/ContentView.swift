@@ -372,9 +372,6 @@ struct ContentView: View {
 
     @ViewBuilder
     func BoringFaceAnimation() -> some View {
-        let selectedFaceCount = min(max(boringFaceStyles.count, 1), 3)
-        let rosterWidth = CGFloat(selectedFaceCount * 24 + max(0, selectedFaceCount - 1) * 2)
-
         // Keep the original idle-notch geometry: the clear leading inset and
         // the face on the trailing side keep it out of the physical camera
         // notch on real MacBook Pro displays.
@@ -388,7 +385,7 @@ struct ContentView: View {
 
             Rectangle()
                 .fill(.black)
-                .frame(width: max(0, vm.closedNotchSize.width - 20 - rosterWidth))
+                .frame(width: max(0, vm.closedNotchSize.width - 20))
 
             BoringFaceRosterView(
                 styles: boringFaceStyles,
