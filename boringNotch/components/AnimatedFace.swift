@@ -70,6 +70,38 @@ struct MinimalFaceFeatures: View {
     }
 }
 
+/// Black backing for face art shown outside the notch. The face art is drawn in
+/// light colours for a black notch, so it needs the same backing in the
+/// settings page, which follows the system appearance and is white in light mode.
+struct FacePreviewBackdrop: ViewModifier {
+    var horizontalPadding: CGFloat = 8
+    var verticalPadding: CGFloat = 8
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.black)
+            )
+    }
+}
+
+extension View {
+    func facePreviewBackdrop(
+        horizontalPadding: CGFloat = 8,
+        verticalPadding: CGFloat = 8
+    ) -> some View {
+        modifier(
+            FacePreviewBackdrop(
+                horizontalPadding: horizontalPadding,
+                verticalPadding: verticalPadding
+            )
+        )
+    }
+}
+
 struct BoringFaceRosterView: View {
     /// Maximum number of faces a roster can show at once.
     static let maxFaceCount = 3

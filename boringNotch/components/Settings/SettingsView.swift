@@ -1200,6 +1200,10 @@ struct Appearance: View {
                     Toggle(isOn: faceSelectionBinding(for: style)) {
                         HStack(spacing: 10) {
                             MinimalFaceFeatures(style: style, height: 20, width: 30)
+                                .facePreviewBackdrop(
+                                    horizontalPadding: 6,
+                                    verticalPadding: 5
+                                )
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(style.rawValue)
                                 Text(style.detail)
@@ -1216,14 +1220,14 @@ struct Appearance: View {
 
                 Toggle("Enable face personality", isOn: $facePersonalityEnabled)
 
-                Slider(value: $idleFacePanelWidth, in: 0...400, step: 5) {
+                Slider(value: $idleFacePanelWidth, in: 0...600, step: 5) {
                     Text(
                         idleFacePanelWidth == 0
                             ? "Idle panel width · Automatic"
                             : "Idle panel width · \(Int(idleFacePanelWidth)) pt"
                     )
                 }
-                Text("Automatic preserves the detected notch width. Move the slider to adjust the black panel length.")
+                Text("Automatic widens the black panel just far enough to show the selected faces beside the camera notch. Values below that minimum are raised automatically.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -1234,6 +1238,7 @@ struct Appearance: View {
                         faceWidth: 34,
                         faceHeight: 26
                     )
+                    .facePreviewBackdrop(horizontalPadding: 14, verticalPadding: 8)
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Preview")
                             .font(.headline)

@@ -38,7 +38,6 @@ struct ContentView: View {
     @Default(.showNotHumanFace) var showNotHumanFace
     @Default(.boringFaceStyles) var boringFaceStyles
     @Default(.facePersonalityEnabled) var facePersonalityEnabled
-    @Default(.idleFacePanelWidth) var idleFacePanelWidth
 
     // Shared interactive spring for movement/resizing to avoid conflicting animations
     private let animationSpring = Animation.interactiveSpring(response: 0.38, dampingFraction: 0.8, blendDuration: 0)
@@ -67,9 +66,10 @@ struct ContentView: View {
 
     // MARK: - Closed notch occupancy
 
-    // The closed notch is drawn exactly over the physical camera notch, so any
-    // closed state that renders inside it is invisible. Idle faces therefore
-    // render *beside* the camera, in the visible ear of the overlay window.
+    // A closed notch is drawn at `closedNotchSize.width`, which is exactly the
+    // physical camera cutout, so anything centred inside it is hidden by the
+    // camera. Idle faces are laid out in the part of the black panel that sits
+    // to the right of the camera instead.
 
     /// Battery HUD, drawn wide inside the closed notch.
     private var showsClosedBatteryHUD: Bool {
@@ -91,8 +91,8 @@ struct ContentView: View {
             && coordinator.musicLiveActivityEnabled && !vm.hideOnClosed
     }
 
-    /// True when the closed notch would otherwise be empty, which is the only
-    /// time the idle faces may occupy the ear beside the camera.
+    /// True when the closed notch has nothing else to show, which is the only
+    /// time the idle faces get the panel to themselves.
     private var showsIdleFaces: Bool {
         vm.notchState == .closed
             && Defaults[.showNotHumanFace]
@@ -103,12 +103,64 @@ struct ContentView: View {
             && !showsClosedMusicActivity
     }
 
+    // MARK: - Idle face layout
+
+    private static let idleFaceWidth: CGFloat = 24
+    private static let idleFaceHeight: CGFloat = 18
+    /// Gap between the camera cutout, the roster and the panel's right edge.
+    private static let idleFaceMargin: CGFloat = 16
+
+    private var idleFaceRosterWidth: CGFloat {
+        BoringFaceRosterView.intrinsicWidth(
+            styles: boringFaceStyles,
+            faceWidth: Self.idleFaceWidth
+        )
+    }
+
+    /// Narrowest panel that still shows the whole roster beside the camera.
+    private var minimumIdleFacePanelWidth: CGFloat {
+        vm.closedNotchSize.width + 2 * (idleFaceRosterWidth + 2 * Self.idleFaceMargin)
+    }
+
+    /// Width of the black panel behind the idle faces, padding included. A
+    /// stored width of 0 means automatic: sized to fit the selected roster.
+    private var idleFacePanelWidth: CGFloat {
+        let stored = Defaults[.idleFacePanelWidth]
+        // Never shrink below the roster, otherwise faces get clipped away.
+        return stored > 0 ? max(stored, minimumIdleFacePanelWidth) : minimumIdleFacePanelWidth
+    }
+
+    /// Width available to `NotchLayout` for this branch, i.e. the panel minus
+    /// the horizontal padding every branch receives.
+    private var idleFaceContentWidth: CGFloat {
+        max(0, idleFacePanelWidth - 2 * cornerRadiusInsets.closed.bottom)
+    }
+
+    /// Leading offset of the roster inside the notch content. The panel and the
+    /// physical camera are both centred on the screen, so the roster starts
+    /// just past the camera's right edge and is kept inside the panel.
+    private var idleFaceRosterLeadingOffset: CGFloat {
+        let padding = cornerRadiusInsets.closed.bottom
+        let cameraRightEdge = vm.closedNotchSize.width / 2 + idleFaceContentWidth / 2
+        let desired = cameraRightEdge + Self.idleFaceMargin
+        // The roster may overlap the panel's padding but must not pass its edge.
+        // `minimumIdleFacePanelWidth` already guarantees room for both margins;
+        // these bounds only matter for degenerate panel widths.
+        let lowest = -padding
+        let highest = idleFaceContentWidth + padding - idleFaceRosterWidth
+
+        return min(max(desired, lowest), highest)
+    }
+
     private var computedChinWidth: CGFloat {
         if showsClosedBatteryHUD {
             return 640
         }
         if showsClosedMusicActivity {
             return vm.closedNotchSize.width + (2 * max(0, vm.effectiveClosedNotchHeight - 12) + 20)
+        }
+        if showsIdleFaces {
+            return idleFacePanelWidth
         }
         return vm.closedNotchSize.width
     }
@@ -293,8 +345,7 @@ struct ContentView: View {
                     .padding(.top, 40)
                     Spacer()
                 } else {
-                    if coordinator.expandingView.type == .battery && coordinator.expandingView.show
-                        && vm.notchState == .closed && Defaults[.showPowerStatusNotifications]
+                    if showsClosedBatteryHUD
                     {
                         HStack(spacing: 0) {
                             HStack {
@@ -320,14 +371,14 @@ struct ContentView: View {
                             .frame(width: 76, alignment: .trailing)
                         }
                         .frame(height: vm.effectiveClosedNotchHeight, alignment: .center)
-                      } else if coordinator.sneakPeek.show && Defaults[.inlineHUD] && (coordinator.sneakPeek.type != .music) && (coordinator.sneakPeek.type != .battery) && vm.notchState == .closed {
+                      } else if showsClosedInlineHUD {
                           InlineHUD(type: $coordinator.sneakPeek.type, value: $coordinator.sneakPeek.value, icon: $coordinator.sneakPeek.icon, hoverAnimation: $isHovering, gestureProgress: $gestureProgress)
                               .transition(.opacity)
-                      } else if (!coordinator.expandingView.show || coordinator.expandingView.type == .music) && vm.notchState == .closed && (musicManager.isPlaying || !musicManager.isPlayerIdle) && coordinator.musicLiveActivityEnabled && !vm.hideOnClosed {
+                      } else if showsClosedMusicActivity {
                           MusicLiveActivity()
                               .frame(alignment: .center)
                       } else if showsIdleFaces {
-                          BoringFaceAnimation()
+                          idleFacePanel()
                        } else if vm.notchState == .open {
                            BoringHeader()
                                .frame(height: max(24, vm.effectiveClosedNotchHeight))
@@ -400,60 +451,32 @@ struct ContentView: View {
         .onDrop(of: [.fileURL, .url, .utf8PlainText, .plainText, .data], delegate: GeneralDropTargetDelegate(isTargeted: $vm.generalDropTargeting))
     }
 
-    @ViewBuilder
-    func BoringFaceAnimation() -> some View {
-        let panelWidth = idleFacePanelWidth > 0 ? idleFacePanelWidth : vm.closedNotchSize.width
-
-        NotchShape()
-            .fill(.black)
-        .frame(
-            width: panelWidth,
-            height: vm.effectiveClosedNotchHeight,
-            alignment: .center
-        )
-        .frame(width: windowSize.width, height: vm.effectiveClosedNotchHeight)
-    }
-
-    private var idleFaceOverlay: some View {
-        let rosterWidth = BoringFaceRosterView.intrinsicWidth(
+    /// Idle faces drawn inside the closed notch's black panel. The branch's layout
+    /// width is `idleFaceContentWidth`, which is what keeps the painted panel
+    /// from ballooning to the full overlay width.
+    private func idleFacePanel() -> some View {
+        BoringFaceRosterView(
             styles: boringFaceStyles,
-            faceWidth: 24
+            personalityEnabled: facePersonalityEnabled,
+            faceWidth: Self.idleFaceWidth,
+            faceHeight: Self.idleFaceHeight,
+            fillsWidth: false
         )
-        let leadingX = idleFaceLeadingX(rosterWidth: rosterWidth)
-
-        return GeometryReader { geometry in
-            BoringFaceRosterView(
-                styles: boringFaceStyles,
-                personalityEnabled: facePersonalityEnabled,
-                faceWidth: 24,
-                faceHeight: 18,
-                fillsWidth: false
-            )
-            .position(
-                x: leadingX + rosterWidth / 2,
-                y: geometry.size.height / 2
-            )
+        .offset(
+            x: idleFaceRosterLeadingOffset,
+            y: max(0, (vm.effectiveClosedNotchHeight - Self.idleFaceHeight) / 2)
+        )
+        .frame(
+            width: idleFaceContentWidth,
+            height: vm.effectiveClosedNotchHeight,
+            alignment: .topLeading
+        )
+        // Keep the face area opaque when the roster widens beyond the physical
+        // camera cutout. The window around this shaped panel remains clear.
+        .background {
+            NotchShape().fill(.black)
         }
-        .frame(width: windowSize.width, height: vm.effectiveClosedNotchHeight)
         .allowsHitTesting(false)
-    }
-
-    /// Converts the screen's real right-ear bounds into the centered panel's
-    /// local coordinates. The safe-area rectangle starts beyond the camera
-    /// notch, so the selected faces cannot be covered by the physical camera.
-    private func idleFaceLeadingX(rosterWidth: CGFloat) -> CGFloat {
-        guard let screen = vm.screenUUID.flatMap({ NSScreen.screen(withUUID: $0) }) else {
-            return windowSize.width / 2 + vm.closedNotchSize.width / 2 + 12
-        }
-
-        let panelLeft = screen.frame.midX - windowSize.width / 2
-        let earStart = screen.auxiliaryTopRightArea?.minX
-            ?? (screen.frame.midX + vm.closedNotchSize.width / 2)
-        let earWidth = screen.auxiliaryTopRightArea?.width ?? (windowSize.width / 2)
-        let desiredLeadingX = earStart - panelLeft + 12
-        let latestLeadingX = earStart - panelLeft + max(12, earWidth - rosterWidth - 12)
-
-        return min(max(desiredLeadingX, 0), min(latestLeadingX, windowSize.width - rosterWidth))
     }
 
     @ViewBuilder
