@@ -103,6 +103,14 @@ struct ContentView: View {
             && !showsClosedMusicActivity
     }
 
+    /// Keep the idle face roster visible in the right ear while music is active.
+    private var showsMusicFaces: Bool {
+        showsClosedMusicActivity
+            && Defaults[.showNotHumanFace]
+            && vm.effectiveClosedNotchHeight > 0
+            && !coordinator.helloAnimationRunning
+    }
+
     // MARK: - Idle face layout
 
     private static let idleFaceWidth: CGFloat = 24
@@ -128,6 +136,20 @@ struct ContentView: View {
         let stored = Defaults[.idleFacePanelWidth]
         // Never shrink below the roster, otherwise faces get clipped away.
         return stored > 0 ? max(stored, minimumIdleFacePanelWidth) : minimumIdleFacePanelWidth
+    }
+
+    /// Music uses both ears, so leave enough room for its centered activity,
+    /// the face roster in the right ear, and a margin at the panel edge.
+    private var musicFacePanelWidth: CGFloat {
+        let musicWidth = vm.closedNotchSize.width
+            + (2 * max(0, vm.effectiveClosedNotchHeight - 12) + 20)
+        let minimumWidth = musicWidth
+            + 2 * (Self.idleFaceMargin + idleFaceRosterWidth + Self.idleFaceMargin)
+        return max(idleFacePanelWidth, minimumWidth)
+    }
+
+    private var musicFaceContentWidth: CGFloat {
+        max(0, musicFacePanelWidth - 2 * cornerRadiusInsets.closed.bottom)
     }
 
     /// Width available to `NotchLayout` for this branch, i.e. the panel minus
@@ -157,6 +179,9 @@ struct ContentView: View {
             return 640
         }
         if showsClosedMusicActivity {
+            if showsMusicFaces {
+                return musicFacePanelWidth
+            }
             return vm.closedNotchSize.width + (2 * max(0, vm.effectiveClosedNotchHeight - 12) + 20)
         }
         if showsIdleFaces {
@@ -375,7 +400,7 @@ struct ContentView: View {
                           InlineHUD(type: $coordinator.sneakPeek.type, value: $coordinator.sneakPeek.value, icon: $coordinator.sneakPeek.icon, hoverAnimation: $isHovering, gestureProgress: $gestureProgress)
                               .transition(.opacity)
                       } else if showsClosedMusicActivity {
-                          MusicLiveActivity()
+                          musicActivityPanel()
                               .frame(alignment: .center)
                       } else if showsIdleFaces {
                           idleFacePanel()
@@ -477,6 +502,34 @@ struct ContentView: View {
             NotchShape().fill(.black)
         }
         .allowsHitTesting(false)
+    }
+
+    /// Music stays centered on the camera while the faces occupy the new panel
+    /// area to its right.
+    @ViewBuilder
+    private func musicActivityPanel() -> some View {
+        if showsMusicFaces {
+            HStack(spacing: Self.idleFaceMargin) {
+                MusicLiveActivity()
+
+                BoringFaceRosterView(
+                    styles: boringFaceStyles,
+                    personalityEnabled: facePersonalityEnabled,
+                    faceWidth: Self.idleFaceWidth,
+                    faceHeight: Self.idleFaceHeight,
+                    fillsWidth: false
+                )
+                .allowsHitTesting(false)
+            }
+            .frame(
+                width: musicFaceContentWidth,
+                height: vm.effectiveClosedNotchHeight,
+                alignment: .center
+            )
+            .offset(x: (idleFaceRosterWidth + Self.idleFaceMargin) / 2)
+        } else {
+            MusicLiveActivity()
+        }
     }
 
     @ViewBuilder
