@@ -13,6 +13,8 @@ struct BoringHeader: View {
     @ObservedObject var batteryModel = BatteryStatusViewModel.shared
     @ObservedObject var coordinator = BoringViewCoordinator.shared
     @StateObject var tvm = ShelfStateViewModel.shared
+    @Default(.boringFaceStyles) private var boringFaceStyles
+    @Default(.facePersonalityEnabled) private var facePersonalityEnabled
     var body: some View {
         HStack(spacing: 0) {
             HStack {
@@ -28,12 +30,25 @@ struct BoringHeader: View {
             .zIndex(2)
 
             if vm.notchState == .open {
-                Rectangle()
-                    .fill(NSScreen.screen(withUUID: coordinator.selectedScreenUUID)?.safeAreaInsets.top ?? 0 > 0 ? .black : .clear)
+                ZStack {
+                    Rectangle()
+                        .fill(NSScreen.screen(withUUID: coordinator.selectedScreenUUID)?.safeAreaInsets.top ?? 0 > 0 ? .black : .clear)
+                        .frame(width: vm.closedNotchSize.width)
+                        .mask {
+                            NotchShape()
+                        }
+
+                    BoringFaceRosterView(
+                        styles: boringFaceStyles,
+                        personalityEnabled: facePersonalityEnabled,
+                        faceWidth: 24,
+                        faceHeight: 18,
+                        fillsWidth: true
+                    )
                     .frame(width: vm.closedNotchSize.width)
-                    .mask {
-                        NotchShape()
-                    }
+                    .padding(.horizontal, 14)
+                    .allowsHitTesting(false)
+                }
             }
 
             HStack(spacing: 4) {
