@@ -143,13 +143,23 @@ struct ContentView: View {
     private var musicFacePanelWidth: CGFloat {
         let musicWidth = vm.closedNotchSize.width
             + (2 * max(0, vm.effectiveClosedNotchHeight - 12) + 20)
-        let minimumWidth = musicWidth
-            + 2 * (Self.idleFaceMargin + idleFaceRosterWidth + Self.idleFaceMargin)
-        return max(idleFacePanelWidth, minimumWidth)
+        let minimumWidth = musicWidth + Self.idleFaceMargin + idleFaceRosterWidth
+            + 2 * Self.idleFaceMargin
+        let stored = Defaults[.idleFacePanelWidth]
+        return stored > 0 ? max(stored, minimumWidth) : minimumWidth
     }
 
     private var musicFaceContentWidth: CGFloat {
         max(0, musicFacePanelWidth - 2 * cornerRadiusInsets.closed.bottom)
+    }
+
+    /// Shift the widened music panel to the right, keeping its left edge aligned
+    /// with the music-only panel.
+    private var musicFacePanelOffset: CGFloat {
+        let musicOnlyPanelWidth = vm.closedNotchSize.width
+            + (2 * max(0, vm.effectiveClosedNotchHeight - 12) + 20)
+            + 2 * cornerRadiusInsets.closed.bottom
+        return max(0, (musicFacePanelWidth - musicOnlyPanelWidth) / 2)
     }
 
     /// Width available to `NotchLayout` for this branch, i.e. the panel minus
@@ -201,6 +211,7 @@ struct ContentView: View {
         ZStack(alignment: .top) {
             VStack(spacing: 0) {
                 let mainLayout = NotchLayout()
+                    .offset(x: showsMusicFaces ? -musicFacePanelOffset : 0)
                     .frame(alignment: .top)
                     .padding(
                         .horizontal,
@@ -228,6 +239,7 @@ struct ContentView: View {
                     )
                 
                 mainLayout
+                    .offset(x: showsMusicFaces ? musicFacePanelOffset : 0)
                     .frame(height: vm.notchState == .open ? vm.notchSize.height : nil)
                     .conditionalModifier(true) { view in
                         let openAnimation = Animation.spring(response: 0.42, dampingFraction: 0.8, blendDuration: 0)
@@ -309,6 +321,7 @@ struct ContentView: View {
                     Rectangle()
                         .fill(Color.black.opacity(0.01))
                         .frame(width: computedChinWidth, height: vm.chinHeight)
+                        .offset(x: showsMusicFaces ? musicFacePanelOffset : 0)
                 }
             }
         }
