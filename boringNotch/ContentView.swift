@@ -372,7 +372,8 @@ struct ContentView: View {
 
     @ViewBuilder
     func BoringFaceAnimation() -> some View {
-        let hasPhysicalNotch = NSScreen.screen(withUUID: coordinator.selectedScreenUUID)?.safeAreaInsets.top ?? 0 > 0
+        let selectedFaceCount = min(max(boringFaceStyles.count, 1), 3)
+        let rosterWidth = CGFloat(selectedFaceCount * 24 + max(0, selectedFaceCount - 1) * 2)
 
         // Keep the original idle-notch geometry: the clear leading inset and
         // the face on the trailing side keep it out of the physical camera
@@ -387,7 +388,7 @@ struct ContentView: View {
 
             Rectangle()
                 .fill(.black)
-                .frame(width: max(0, vm.closedNotchSize.width - 20))
+                .frame(width: max(0, vm.closedNotchSize.width - 20 - rosterWidth))
 
             BoringFaceRosterView(
                 styles: boringFaceStyles,
@@ -396,7 +397,6 @@ struct ContentView: View {
                 faceHeight: 18,
                 fillsWidth: false
             )
-            .offset(x: hasPhysicalNotch ? (vm.closedNotchSize.width / 2) + 16 : 0)
         }
         .frame(height: vm.effectiveClosedNotchHeight, alignment: .center)
     }
