@@ -372,6 +372,8 @@ struct ContentView: View {
 
     @ViewBuilder
     func BoringFaceAnimation() -> some View {
+        let hasPhysicalNotch = NSScreen.screen(withUUID: coordinator.selectedScreenUUID)?.safeAreaInsets.top ?? 0 > 0
+
         // Keep the original idle-notch geometry: the clear leading inset and
         // the face on the trailing side keep it out of the physical camera
         // notch on real MacBook Pro displays.
@@ -394,6 +396,7 @@ struct ContentView: View {
                 faceHeight: 18,
                 fillsWidth: false
             )
+            .offset(x: hasPhysicalNotch ? (vm.closedNotchSize.width / 2) + 16 : 0)
         }
         .frame(height: vm.effectiveClosedNotchHeight, alignment: .center)
     }
