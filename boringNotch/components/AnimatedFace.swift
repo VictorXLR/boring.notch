@@ -7,18 +7,26 @@
 import Defaults
 import SwiftUI
 
+/// Presentational face art. Animation is owned by `PersonalityFaceView`, which
+/// passes `isBlinking` in, so there is exactly one blink driver per face.
 struct MinimalFaceFeatures: View {
     @Default(.boringFaceStyle) private var savedFaceStyle
-    @State private var isBlinking = false
 
     private let previewStyle: BoringFaceStyle?
     private let height: CGFloat
     private let width: CGFloat
+    private let isBlinking: Bool
 
-    init(style: BoringFaceStyle? = nil, height: CGFloat = 20, width: CGFloat = 30) {
+    init(
+        style: BoringFaceStyle? = nil,
+        height: CGFloat = 20,
+        width: CGFloat = 30,
+        isBlinking: Bool = false
+    ) {
         self.previewStyle = style
         self.height = height
         self.width = width
+        self.isBlinking = isBlinking
     }
 
     private var activeStyle: BoringFaceStyle {
@@ -31,16 +39,15 @@ struct MinimalFaceFeatures: View {
                 .scaleEffect(min(width / 30, height / 20))
         }
         .frame(width: width, height: height)
-        .onAppear {
-            startBlinking()
-        }
     }
 
     @ViewBuilder
     private var faceContent: some View {
         switch activeStyle {
+        case .classic:
+            ClassicFace(isBlinking: .constant(isBlinking))
         case .neonWink:
-            NeonWinkFace(isBlinking: $isBlinking)
+            NeonWinkFace(isBlinking: .constant(isBlinking))
         case .sleepy:
             SleepyFace()
         case .pixelBot:
@@ -53,19 +60,6 @@ struct MinimalFaceFeatures: View {
             JasonVoorheesFace()
         case .amongUs:
             AmongUsFace()
-        }
-    }
-
-    private func startBlinking() {
-        Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
-            withAnimation(.easeInOut(duration: 0.1)) {
-                isBlinking = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-                withAnimation(.easeInOut(duration: 0.1)) {
-                    isBlinking = false
-                }
-            }
         }
     }
 }
@@ -173,53 +167,116 @@ private struct PersonalityFaceView: View {
     let width: CGFloat
     let height: CGFloat
 
-    @State private var isBlinking = false
+    // Eye blinking and personality are separate layers on purpose. The blink is
+    // part of the face art and runs on its own cadence; personality adds the
+    // squash, wobble and flop on top, and only when the setting is enabled.
+    @State private var isEyeBlinking = false
+    @State private var isSquashing = false
     @State private var isWobbling = false
     @State private var isFallen = false
-    @State private var personalityTask: Task<Void, Never>?
+
+    /// Cadence of the idle eye blink, matching the face's original always-on blink.
+    private static let eyeBlinkInterval: UInt64 = 3_000_000_000
+    private static let eyeBlinkDuration: UInt64 = 120_000_000
 
     var body: some View {
-        MinimalFaceFeatures(style: style, height: height, width: width)
-            .scaleEffect(y: isBlinking ? 0.12 : 1)
+        MinimalFaceFeatures(
+            style: style,
+            height: height,
+            width: width,
+            isBlinking: isEyeBlinking
+        )
+            .scaleEffect(y: isSquashing ? 0.12 : 1)
             .rotationEffect(.degrees(isFallen ? 88 : (isWobbling ? 5 : 0)))
             .offset(y: isFallen ? 3 : 0)
-            .animation(.spring(response: 0.35, dampingFraction: 0.68), value: isBlinking)
+            .animation(.spring(response: 0.35, dampingFraction: 0.68), value: isSquashing)
             .animation(.spring(response: 0.45, dampingFraction: 0.65), value: isWobbling)
             .animation(.spring(response: 0.6, dampingFraction: 0.72), value: isFallen)
-            .onAppear {
-                startPersonality()
+            .task {
+                await blinkEyes()
             }
-            .onDisappear {
-                personalityTask?.cancel()
-                personalityTask = nil
+            // Keying on `enabled` restarts the task when the setting changes and
+            // cancels it automatically when the face leaves the hierarchy.
+            .task(id: enabled) {
+                guard enabled else { return }
+                await runPersonality()
             }
     }
 
-    private func startPersonality() {
-        guard enabled, personalityTask == nil else { return }
+    /// Blinks on a fixed cadence regardless of personality.
+    private func blinkEyes() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: Self.eyeBlinkInterval)
+            guard !Task.isCancelled else { return }
 
-        personalityTask = Task { @MainActor in
-            while !Task.isCancelled {
-                let delay = UInt64(Double.random(in: 3.5...7.5) * 1_000_000_000)
-                try? await Task.sleep(nanoseconds: delay)
-                guard !Task.isCancelled else { return }
-
-                switch Int.random(in: 0...2) {
-                case 0:
-                    withAnimation { isBlinking = true }
-                    try? await Task.sleep(nanoseconds: 180_000_000)
-                    withAnimation { isBlinking = false }
-                case 1:
-                    withAnimation { isWobbling = true }
-                    try? await Task.sleep(nanoseconds: 520_000_000)
-                    withAnimation { isWobbling = false }
-                default:
-                    withAnimation { isFallen = true }
-                    try? await Task.sleep(nanoseconds: 1_250_000_000)
-                    withAnimation { isFallen = false }
-                }
-            }
+            withAnimation(.easeInOut(duration: 0.1)) { isEyeBlinking = true }
+            try? await Task.sleep(nanoseconds: Self.eyeBlinkDuration)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.1)) { isEyeBlinking = false }
         }
+    }
+
+    /// Random squash, wobble or flop, so no two faces move in sync.
+    private func runPersonality() async {
+        while !Task.isCancelled {
+            let delay = UInt64(Double.random(in: 3.5...7.5) * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: delay)
+            guard !Task.isCancelled else { return }
+
+            await playRandomAction()
+        }
+    }
+
+    private func playRandomAction() async {
+        switch Int.random(in: 0...2) {
+        case 0:
+            withAnimation { isSquashing = true }
+            try? await Task.sleep(nanoseconds: 180_000_000)
+            withAnimation { isSquashing = false }
+        case 1:
+            withAnimation { isWobbling = true }
+            try? await Task.sleep(nanoseconds: 520_000_000)
+            withAnimation { isWobbling = false }
+        default:
+            withAnimation { isFallen = true }
+            try? await Task.sleep(nanoseconds: 1_250_000_000)
+            withAnimation { isFallen = false }
+        }
+    }
+}
+
+/// The original notch face, restored as a selectable style. It is drawn in the
+/// same 30x20 space as every other face so it scales identically.
+private struct ClassicFace: View {
+    @Binding var isBlinking: Bool
+
+    var body: some View {
+        VStack(spacing: 2) {
+            HStack(spacing: 5) {
+                ClassicEye(isBlinking: $isBlinking)
+                ClassicEye(isBlinking: $isBlinking)
+            }
+
+            RoundedRectangle(cornerRadius: 1.5)
+                .fill(.white)
+                .frame(width: 3, height: 3)
+
+            SmileShape()
+                .stroke(.white, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .frame(width: 14, height: 6)
+        }
+        .frame(width: 30, height: 20)
+    }
+}
+
+private struct ClassicEye: View {
+    @Binding var isBlinking: Bool
+
+    var body: some View {
+        Capsule()
+            .fill(.white)
+            .frame(width: 4, height: isBlinking ? 1 : 4)
+            .animation(.easeInOut(duration: 0.1), value: isBlinking)
     }
 }
 

@@ -69,6 +69,7 @@ enum OptionKeyAction: String, CaseIterable, Identifiable, Defaults.Serializable 
 }
 
 enum BoringFaceStyle: String, CaseIterable, Identifiable, Defaults.Serializable {
+    case classic = "Classic"
     case neonWink = "Neon Wink"
     case sleepy = "Sleepy"
     case pixelBot = "Pixel Bot"
@@ -81,6 +82,8 @@ enum BoringFaceStyle: String, CaseIterable, Identifiable, Defaults.Serializable 
 
     var detail: String {
         switch self {
+        case .classic:
+            return "The original pencil-drawn face"
         case .neonWink:
             return "A sly wink with a neon grin"
         case .sleepy:

@@ -1276,13 +1276,13 @@ struct Appearance: View {
 
             Section {
                 Toggle(
-                    "Use audio-reactive visualizer",
+                    "Use music visualizer spectrogram",
                     isOn: $useMusicVisualizer.animation()
                 )
                 Text(
                     useMusicVisualizer
                         ? "Audio from the selected music source drives the spectrum."
-                        : "Shows a static music icon instead of reacting to audio."
+                        : "Shows the selected custom animation, or a music note when none is available."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -1312,6 +1312,7 @@ struct Appearance: View {
             } header: {
                 HStack {
                     Text("Custom music live activity animation")
+                    customBadge(text: "Coming soon")
                 }
             }
 
