@@ -139,6 +139,8 @@ extension Defaults.Keys {
     static let boringFaceStyle = Key<BoringFaceStyle>("boringFaceStyle", default: .neonWink)
     static let boringFaceStyles = Key<[BoringFaceStyle]>("boringFaceStyles", default: [.neonWink])
     static let facePersonalityEnabled = Key<Bool>("facePersonalityEnabled", default: true)
+    // Zero keeps the display's detected notch width; positive values are a user override.
+    static let idleFacePanelWidth = Key<CGFloat>("idleFacePanelWidth", default: 0)
     static let tileShowLabels = Key<Bool>("tileShowLabels", default: false)
     static let showCalendar = Key<Bool>("showCalendar", default: false)
     static let hideCompletedReminders = Key<Bool>("hideCompletedReminders", default: true)

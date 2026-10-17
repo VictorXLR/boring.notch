@@ -1166,6 +1166,7 @@ struct Appearance: View {
     @Default(.selectedVisualizer) var selectedVisualizer
     @Default(.boringFaceStyles) var boringFaceStyles
     @Default(.facePersonalityEnabled) var facePersonalityEnabled
+    @Default(.idleFacePanelWidth) var idleFacePanelWidth
 
     let icons: [String] = ["logo2"]
     @State private var selectedIcon: String = "logo2"
@@ -1214,6 +1215,17 @@ struct Appearance: View {
                 }
 
                 Toggle("Enable face personality", isOn: $facePersonalityEnabled)
+
+                Slider(value: $idleFacePanelWidth, in: 0...400, step: 5) {
+                    Text(
+                        idleFacePanelWidth == 0
+                            ? "Idle panel width · Automatic"
+                            : "Idle panel width · \(Int(idleFacePanelWidth)) pt"
+                    )
+                }
+                Text("Automatic preserves the detected notch width. Move the slider to adjust the black panel length.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 HStack(spacing: 12) {
                     BoringFaceRosterView(

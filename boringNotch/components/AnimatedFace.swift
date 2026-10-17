@@ -71,6 +71,11 @@ struct MinimalFaceFeatures: View {
 }
 
 struct BoringFaceRosterView: View {
+    /// Maximum number of faces a roster can show at once.
+    static let maxFaceCount = 3
+    /// Spacing between faces when `fillsWidth` is `false`.
+    static let spacing: CGFloat = 2
+
     let styles: [BoringFaceStyle]
     let personalityEnabled: Bool
     var faceWidth: CGFloat = 24
@@ -78,11 +83,24 @@ struct BoringFaceRosterView: View {
     var fillsWidth: Bool = false
 
     private var visibleStyles: [BoringFaceStyle] {
+        Self.resolvedStyles(styles)
+    }
+
+    /// The styles that actually render: de-duplicated, non-empty and capped at
+    /// `maxFaceCount`. Callers use this so they never measure a roster wider
+    /// than the one on screen.
+    static func resolvedStyles(_ styles: [BoringFaceStyle]) -> [BoringFaceStyle] {
         var uniqueStyles: [BoringFaceStyle] = []
         for style in styles where !uniqueStyles.contains(style) {
             uniqueStyles.append(style)
         }
-        return Array((uniqueStyles.isEmpty ? [.neonWink] : uniqueStyles).prefix(3))
+        return Array((uniqueStyles.isEmpty ? [.neonWink] : uniqueStyles).prefix(maxFaceCount))
+    }
+
+    /// Layout width of the roster when `fillsWidth` is `false`.
+    static func intrinsicWidth(styles: [BoringFaceStyle], faceWidth: CGFloat) -> CGFloat {
+        let count = CGFloat(resolvedStyles(styles).count)
+        return count * faceWidth + max(0, count - 1) * spacing
     }
 
     var body: some View {
@@ -101,7 +119,7 @@ struct BoringFaceRosterView: View {
     }
 
     private var faceViews: some View {
-        HStack(spacing: fillsWidth ? 0 : 2) {
+        HStack(spacing: fillsWidth ? 0 : Self.spacing) {
             ForEach(Array(visibleStyles.enumerated()), id: \.element) { index, style in
                 if fillsWidth && index > 0 {
                     Spacer(minLength: 18)

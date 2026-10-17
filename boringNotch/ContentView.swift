@@ -38,6 +38,7 @@ struct ContentView: View {
     @Default(.showNotHumanFace) var showNotHumanFace
     @Default(.boringFaceStyles) var boringFaceStyles
     @Default(.facePersonalityEnabled) var facePersonalityEnabled
+    @Default(.idleFacePanelWidth) var idleFacePanelWidth
 
     // Shared interactive spring for movement/resizing to avoid conflicting animations
     private let animationSpring = Animation.interactiveSpring(response: 0.38, dampingFraction: 0.8, blendDuration: 0)
@@ -64,24 +65,52 @@ struct ContentView: View {
         )
     }
 
-    private var computedChinWidth: CGFloat {
-        var chinWidth: CGFloat = vm.closedNotchSize.width
+    // MARK: - Closed notch occupancy
 
-        if coordinator.expandingView.type == .battery && coordinator.expandingView.show
+    // The closed notch is drawn exactly over the physical camera notch, so any
+    // closed state that renders inside it is invisible. Idle faces therefore
+    // render *beside* the camera, in the visible ear of the overlay window.
+
+    /// Battery HUD, drawn wide inside the closed notch.
+    private var showsClosedBatteryHUD: Bool {
+        coordinator.expandingView.type == .battery && coordinator.expandingView.show
             && vm.notchState == .closed && Defaults[.showPowerStatusNotifications]
-        {
-            chinWidth = 640
-        } else if (!coordinator.expandingView.show || coordinator.expandingView.type == .music)
+    }
+
+    /// Inline sneak peek HUD, drawn inside the closed notch.
+    private var showsClosedInlineHUD: Bool {
+        coordinator.sneakPeek.show && Defaults[.inlineHUD]
+            && (coordinator.sneakPeek.type != .music) && (coordinator.sneakPeek.type != .battery)
+            && vm.notchState == .closed
+    }
+
+    /// Music live activity, drawn inside the closed notch.
+    private var showsClosedMusicActivity: Bool {
+        (!coordinator.expandingView.show || coordinator.expandingView.type == .music)
             && vm.notchState == .closed && (musicManager.isPlaying || !musicManager.isPlayerIdle)
             && coordinator.musicLiveActivityEnabled && !vm.hideOnClosed
-        {
-            chinWidth += (2 * max(0, vm.effectiveClosedNotchHeight - 12) + 20)
-        } else if vm.notchState == .closed && Defaults[.showNotHumanFace]
-        {
-            chinWidth += (2 * max(0, vm.effectiveClosedNotchHeight - 12) + 20)
-        }
+    }
 
-        return chinWidth
+    /// True when the closed notch would otherwise be empty, which is the only
+    /// time the idle faces may occupy the ear beside the camera.
+    private var showsIdleFaces: Bool {
+        vm.notchState == .closed
+            && Defaults[.showNotHumanFace]
+            && vm.effectiveClosedNotchHeight > 0
+            && !coordinator.helloAnimationRunning
+            && !showsClosedBatteryHUD
+            && !showsClosedInlineHUD
+            && !showsClosedMusicActivity
+    }
+
+    private var computedChinWidth: CGFloat {
+        if showsClosedBatteryHUD {
+            return 640
+        }
+        if showsClosedMusicActivity {
+            return vm.closedNotchSize.width + (2 * max(0, vm.effectiveClosedNotchHeight - 12) + 20)
+        }
+        return vm.closedNotchSize.width
     }
 
     var body: some View {
@@ -207,7 +236,10 @@ struct ContentView: View {
             }
         }
         .padding(.bottom, 8)
-        .frame(maxWidth: windowSize.width, maxHeight: windowSize.height, alignment: .top)
+        // Keep SwiftUI's coordinate space identical to the centered NSPanel.
+        // A maxWidth cap can leave the root at its intrinsic width, which makes
+        // screen-relative notch ear offsets land underneath the camera.
+        .frame(width: windowSize.width, height: windowSize.height, alignment: .top)
         .compositingGroup()
         .scaleEffect(
             x: gestureScale,
@@ -294,7 +326,7 @@ struct ContentView: View {
                       } else if (!coordinator.expandingView.show || coordinator.expandingView.type == .music) && vm.notchState == .closed && (musicManager.isPlaying || !musicManager.isPlayerIdle) && coordinator.musicLiveActivityEnabled && !vm.hideOnClosed {
                           MusicLiveActivity()
                               .frame(alignment: .center)
-                      } else if vm.notchState == .closed && Defaults[.showNotHumanFace]  {
+                      } else if showsIdleFaces {
                           BoringFaceAnimation()
                        } else if vm.notchState == .open {
                            BoringHeader()
@@ -370,12 +402,26 @@ struct ContentView: View {
 
     @ViewBuilder
     func BoringFaceAnimation() -> some View {
-        // The physical camera occupies the centered notch width. Use the
-        // wider overlay window so the idle roster sits in a visible ear.
-        ZStack(alignment: .trailing) {
-            Rectangle()
-                .fill(.black)
+        let panelWidth = idleFacePanelWidth > 0 ? idleFacePanelWidth : vm.closedNotchSize.width
 
+        NotchShape()
+            .fill(.black)
+        .frame(
+            width: panelWidth,
+            height: vm.effectiveClosedNotchHeight,
+            alignment: .center
+        )
+        .frame(width: windowSize.width, height: vm.effectiveClosedNotchHeight)
+    }
+
+    private var idleFaceOverlay: some View {
+        let rosterWidth = BoringFaceRosterView.intrinsicWidth(
+            styles: boringFaceStyles,
+            faceWidth: 24
+        )
+        let leadingX = idleFaceLeadingX(rosterWidth: rosterWidth)
+
+        return GeometryReader { geometry in
             BoringFaceRosterView(
                 styles: boringFaceStyles,
                 personalityEnabled: facePersonalityEnabled,
@@ -383,13 +429,31 @@ struct ContentView: View {
                 faceHeight: 18,
                 fillsWidth: false
             )
-            .padding(.trailing, 18)
+            .position(
+                x: leadingX + rosterWidth / 2,
+                y: geometry.size.height / 2
+            )
         }
-        .frame(
-            width: windowSize.width,
-            height: vm.effectiveClosedNotchHeight,
-            alignment: .center
-        )
+        .frame(width: windowSize.width, height: vm.effectiveClosedNotchHeight)
+        .allowsHitTesting(false)
+    }
+
+    /// Converts the screen's real right-ear bounds into the centered panel's
+    /// local coordinates. The safe-area rectangle starts beyond the camera
+    /// notch, so the selected faces cannot be covered by the physical camera.
+    private func idleFaceLeadingX(rosterWidth: CGFloat) -> CGFloat {
+        guard let screen = vm.screenUUID.flatMap({ NSScreen.screen(withUUID: $0) }) else {
+            return windowSize.width / 2 + vm.closedNotchSize.width / 2 + 12
+        }
+
+        let panelLeft = screen.frame.midX - windowSize.width / 2
+        let earStart = screen.auxiliaryTopRightArea?.minX
+            ?? (screen.frame.midX + vm.closedNotchSize.width / 2)
+        let earWidth = screen.auxiliaryTopRightArea?.width ?? (windowSize.width / 2)
+        let desiredLeadingX = earStart - panelLeft + 12
+        let latestLeadingX = earStart - panelLeft + max(12, earWidth - rosterWidth - 12)
+
+        return min(max(desiredLeadingX, 0), min(latestLeadingX, windowSize.width - rosterWidth))
     }
 
     @ViewBuilder
