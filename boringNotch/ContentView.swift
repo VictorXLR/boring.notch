@@ -45,6 +45,10 @@ struct ContentView: View {
     private let extendedHoverPadding: CGFloat = 30
     private let zeroHeightHoverPadding: CGFloat = 10
 
+    private var customVisualizersAreAvailable: Bool {
+        !Defaults[.customVisualizers].isEmpty
+    }
+
     private var topCornerRadius: CGFloat {
        ((vm.notchState == .open) && Defaults[.cornerRadiusScaling])
                 ? cornerRadiusInsets.opened.top
@@ -368,25 +372,20 @@ struct ContentView: View {
 
     @ViewBuilder
     func BoringFaceAnimation() -> some View {
-        HStack {
-            HStack {
-                Rectangle()
-                    .fill(.clear)
-                    .frame(
-                        width: max(0, vm.effectiveClosedNotchHeight - 12),
-                        height: max(0, vm.effectiveClosedNotchHeight - 12)
-                    )
-                Rectangle()
-                    .fill(.black)
-                    .frame(width: vm.closedNotchSize.width - 20)
-                BoringFaceRosterView(
-                    styles: boringFaceStyles,
-                    personalityEnabled: facePersonalityEnabled,
-                    faceWidth: 24,
-                    faceHeight: 18
-                )
-            }
-        }.frame(
+        ZStack {
+            Rectangle()
+                .fill(.black)
+            BoringFaceRosterView(
+                styles: boringFaceStyles,
+                personalityEnabled: facePersonalityEnabled,
+                faceWidth: 38,
+                faceHeight: 26,
+                fillsWidth: true
+            )
+            .padding(.horizontal, 28)
+        }
+        .frame(
+            width: vm.closedNotchSize.width,
             height: vm.effectiveClosedNotchHeight,
             alignment: .center
         )
@@ -470,8 +469,14 @@ struct ContentView: View {
                                 .frame(width: 16, height: 12)
                         }
                 } else {
-                    LottieAnimationContainer()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    if customVisualizersAreAvailable {
+                        LottieAnimationContainer()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        Image(systemName: "music.note")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .frame(

@@ -75,6 +75,7 @@ struct BoringFaceRosterView: View {
     let personalityEnabled: Bool
     var faceWidth: CGFloat = 24
     var faceHeight: CGFloat = 18
+    var fillsWidth: Bool = false
 
     private var visibleStyles: [BoringFaceStyle] {
         var uniqueStyles: [BoringFaceStyle] = []
@@ -85,8 +86,26 @@ struct BoringFaceRosterView: View {
     }
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(visibleStyles) { style in
+        Group {
+            if fillsWidth {
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    faceViews
+                    Spacer(minLength: 0)
+                }
+            } else {
+                faceViews
+            }
+        }
+        .frame(height: faceHeight)
+    }
+
+    private var faceViews: some View {
+        HStack(spacing: fillsWidth ? 0 : 2) {
+            ForEach(Array(visibleStyles.enumerated()), id: \.element) { index, style in
+                if fillsWidth && index > 0 {
+                    Spacer(minLength: 18)
+                }
                 PersonalityFaceView(
                     style: style,
                     enabled: personalityEnabled,
@@ -95,7 +114,6 @@ struct BoringFaceRosterView: View {
                 )
             }
         }
-        .frame(height: faceHeight)
     }
 }
 
