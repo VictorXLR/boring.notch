@@ -1164,7 +1164,8 @@ struct Appearance: View {
     @Default(.useMusicVisualizer) var useMusicVisualizer
     @Default(.customVisualizers) var customVisualizers
     @Default(.selectedVisualizer) var selectedVisualizer
-    @Default(.boringFaceStyle) var boringFaceStyle
+    @Default(.boringFaceStyles) var boringFaceStyles
+    @Default(.facePersonalityEnabled) var facePersonalityEnabled
 
     let icons: [String] = ["logo2"]
     @State private var selectedIcon: String = "logo2"
@@ -1190,8 +1191,12 @@ struct Appearance: View {
                     Text("Show face while inactive")
                 }
 
-                Picker("Face", selection: $boringFaceStyle) {
-                    ForEach(BoringFaceStyle.allCases) { style in
+                Text("Choose up to three faces")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                ForEach(BoringFaceStyle.allCases) { style in
+                    Toggle(isOn: faceSelectionBinding(for: style)) {
                         HStack(spacing: 10) {
                             MinimalFaceFeatures(style: style, height: 20, width: 30)
                             VStack(alignment: .leading, spacing: 2) {
@@ -1201,18 +1206,32 @@ struct Appearance: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
-                        .tag(style)
                     }
+                    .disabled(
+                        (boringFaceStyles.count == 1 && boringFaceStyles.contains(style))
+                            || (boringFaceStyles.count >= 3 && !boringFaceStyles.contains(style))
+                    )
                 }
 
+                Toggle("Enable face personality", isOn: $facePersonalityEnabled)
+
                 HStack(spacing: 12) {
-                    MinimalFaceFeatures(style: boringFaceStyle, height: 40, width: 60)
+                    BoringFaceRosterView(
+                        styles: boringFaceStyles,
+                        personalityEnabled: false,
+                        faceWidth: 34,
+                        faceHeight: 26
+                    )
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Preview")
                             .font(.headline)
-                        Text(boringFaceStyle.detail)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Text(
+                            facePersonalityEnabled
+                                ? "Faces blink, wobble, and occasionally flop over."
+                                : "Faces stay still."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     }
                 }
                 .padding(.vertical, 4)
@@ -1431,6 +1450,24 @@ struct Appearance: View {
         }
         .accentColor(.effectiveAccent)
         .navigationTitle("Appearance")
+    }
+
+    private func faceSelectionBinding(for style: BoringFaceStyle) -> Binding<Bool> {
+        Binding(
+            get: {
+                boringFaceStyles.contains(style)
+            },
+            set: { selected in
+                if selected {
+                    guard !boringFaceStyles.contains(style), boringFaceStyles.count < 3 else {
+                        return
+                    }
+                    boringFaceStyles.append(style)
+                } else if boringFaceStyles.count > 1 {
+                    boringFaceStyles.removeAll { $0 == style }
+                }
+            }
+        )
     }
 
     func checkVideoInput() -> Bool {

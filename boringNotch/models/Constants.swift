@@ -73,6 +73,9 @@ enum BoringFaceStyle: String, CaseIterable, Identifiable, Defaults.Serializable 
     case sleepy = "Sleepy"
     case pixelBot = "Pixel Bot"
     case starstruck = "Starstruck"
+    case darthVader = "Darth Vader"
+    case jasonVoorhees = "Jason Voorhees"
+    case amongUs = "Among Us"
 
     var id: String { rawValue }
 
@@ -86,6 +89,12 @@ enum BoringFaceStyle: String, CaseIterable, Identifiable, Defaults.Serializable 
             return "A tiny retro arcade companion"
         case .starstruck:
             return "Bright-eyed and a little dramatic"
+        case .darthVader:
+            return "A tiny dark-side helmet with a red glare"
+        case .jasonVoorhees:
+            return "A hockey mask that never really leaves"
+        case .amongUs:
+            return "A suspicious little crewmate"
         }
     }
 }
@@ -128,6 +137,8 @@ extension Defaults.Keys {
 
     static let showNotHumanFace = Key<Bool>("showNotHumanFace", default: true)
     static let boringFaceStyle = Key<BoringFaceStyle>("boringFaceStyle", default: .neonWink)
+    static let boringFaceStyles = Key<[BoringFaceStyle]>("boringFaceStyles", default: [.neonWink])
+    static let facePersonalityEnabled = Key<Bool>("facePersonalityEnabled", default: true)
     static let tileShowLabels = Key<Bool>("tileShowLabels", default: false)
     static let showCalendar = Key<Bool>("showCalendar", default: false)
     static let hideCompletedReminders = Key<Bool>("hideCompletedReminders", default: true)

@@ -47,6 +47,12 @@ struct MinimalFaceFeatures: View {
             PixelBotFace()
         case .starstruck:
             StarstruckFace()
+        case .darthVader:
+            DarthVaderFace()
+        case .jasonVoorhees:
+            JasonVoorheesFace()
+        case .amongUs:
+            AmongUsFace()
         }
     }
 
@@ -58,6 +64,91 @@ struct MinimalFaceFeatures: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                 withAnimation(.easeInOut(duration: 0.1)) {
                     isBlinking = false
+                }
+            }
+        }
+    }
+}
+
+struct BoringFaceRosterView: View {
+    let styles: [BoringFaceStyle]
+    let personalityEnabled: Bool
+    var faceWidth: CGFloat = 24
+    var faceHeight: CGFloat = 18
+
+    private var visibleStyles: [BoringFaceStyle] {
+        var uniqueStyles: [BoringFaceStyle] = []
+        for style in styles where !uniqueStyles.contains(style) {
+            uniqueStyles.append(style)
+        }
+        return Array((uniqueStyles.isEmpty ? [.neonWink] : uniqueStyles).prefix(3))
+    }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(visibleStyles) { style in
+                PersonalityFaceView(
+                    style: style,
+                    enabled: personalityEnabled,
+                    width: faceWidth,
+                    height: faceHeight
+                )
+            }
+        }
+        .frame(height: faceHeight)
+    }
+}
+
+private struct PersonalityFaceView: View {
+    let style: BoringFaceStyle
+    let enabled: Bool
+    let width: CGFloat
+    let height: CGFloat
+
+    @State private var isBlinking = false
+    @State private var isWobbling = false
+    @State private var isFallen = false
+    @State private var personalityTask: Task<Void, Never>?
+
+    var body: some View {
+        MinimalFaceFeatures(style: style, height: height, width: width)
+            .scaleEffect(y: isBlinking ? 0.12 : 1)
+            .rotationEffect(.degrees(isFallen ? 88 : (isWobbling ? 5 : 0)))
+            .offset(y: isFallen ? 3 : 0)
+            .animation(.spring(response: 0.35, dampingFraction: 0.68), value: isBlinking)
+            .animation(.spring(response: 0.45, dampingFraction: 0.65), value: isWobbling)
+            .animation(.spring(response: 0.6, dampingFraction: 0.72), value: isFallen)
+            .onAppear {
+                startPersonality()
+            }
+            .onDisappear {
+                personalityTask?.cancel()
+                personalityTask = nil
+            }
+    }
+
+    private func startPersonality() {
+        guard enabled, personalityTask == nil else { return }
+
+        personalityTask = Task { @MainActor in
+            while !Task.isCancelled {
+                let delay = UInt64(Double.random(in: 3.5...7.5) * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: delay)
+                guard !Task.isCancelled else { return }
+
+                switch Int.random(in: 0...2) {
+                case 0:
+                    withAnimation { isBlinking = true }
+                    try? await Task.sleep(nanoseconds: 180_000_000)
+                    withAnimation { isBlinking = false }
+                case 1:
+                    withAnimation { isWobbling = true }
+                    try? await Task.sleep(nanoseconds: 520_000_000)
+                    withAnimation { isWobbling = false }
+                default:
+                    withAnimation { isFallen = true }
+                    try? await Task.sleep(nanoseconds: 1_250_000_000)
+                    withAnimation { isFallen = false }
                 }
             }
         }
@@ -161,6 +252,121 @@ private struct StarstruckFace: View {
         }
         .frame(width: 30, height: 20)
         .shadow(color: .yellow.opacity(0.45), radius: 3)
+    }
+}
+
+private struct DarthVaderFace: View {
+    var body: some View {
+        ZStack {
+            Path { path in
+                path.move(to: CGPoint(x: 7, y: 5))
+                path.addLine(to: CGPoint(x: 10, y: 1))
+                path.addLine(to: CGPoint(x: 20, y: 1))
+                path.addLine(to: CGPoint(x: 23, y: 5))
+                path.addLine(to: CGPoint(x: 26, y: 18))
+                path.addLine(to: CGPoint(x: 4, y: 18))
+                path.closeSubpath()
+            }
+            .fill(
+                LinearGradient(
+                    colors: [.black, .gray.opacity(0.45), .black],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+
+            HStack(spacing: 7) {
+                Rectangle().fill(.red).frame(width: 4, height: 1.5)
+                Rectangle().fill(.red).frame(width: 4, height: 1.5)
+            }
+            .shadow(color: .red, radius: 3)
+            .offset(y: -2)
+
+            VStack(spacing: 1) {
+                Rectangle().fill(.gray.opacity(0.75)).frame(width: 8, height: 1)
+                Rectangle().fill(.gray.opacity(0.45)).frame(width: 6, height: 1)
+                Rectangle().fill(.gray.opacity(0.75)).frame(width: 8, height: 1)
+            }
+            .offset(y: 7)
+        }
+        .frame(width: 30, height: 20)
+        .shadow(color: .red.opacity(0.35), radius: 3)
+    }
+}
+
+private struct JasonVoorheesFace: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [.white, .gray.opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 18, height: 18)
+
+            HStack(spacing: 6) {
+                Circle().fill(.black).frame(width: 3, height: 2.5)
+                Circle().fill(.black).frame(width: 3, height: 2.5)
+            }
+            .offset(y: -2)
+
+            Rectangle()
+                .fill(.red.opacity(0.9))
+                .frame(width: 2, height: 8)
+                .rotationEffect(.degrees(-35))
+                .offset(x: -5, y: 4)
+
+            HStack(spacing: 4) {
+                Circle().fill(.black.opacity(0.8)).frame(width: 1.5, height: 1.5)
+                Circle().fill(.black.opacity(0.8)).frame(width: 1.5, height: 1.5)
+                Circle().fill(.black.opacity(0.8)).frame(width: 1.5, height: 1.5)
+            }
+            .offset(y: 5)
+        }
+        .frame(width: 30, height: 20)
+        .shadow(color: .red.opacity(0.45), radius: 2)
+    }
+}
+
+private struct AmongUsFace: View {
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            RoundedRectangle(cornerRadius: 5)
+                .fill(
+                    LinearGradient(
+                        colors: [.red, .red.opacity(0.65)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 17, height: 16)
+                .offset(x: 7, y: -1)
+
+            RoundedRectangle(cornerRadius: 3)
+                .fill(.blue.opacity(0.95))
+                .frame(width: 10, height: 6)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 2)
+                        .stroke(.white.opacity(0.65), lineWidth: 1)
+                }
+                .offset(x: 11, y: -7)
+
+            RoundedRectangle(cornerRadius: 2)
+                .fill(.red.opacity(0.9))
+                .frame(width: 5, height: 10)
+                .offset(x: 2, y: -2)
+
+            HStack(spacing: 4) {
+                Rectangle().fill(.red).frame(width: 4, height: 4)
+                Rectangle().fill(.red).frame(width: 4, height: 4)
+            }
+            .offset(x: 9, y: 0)
+        }
+        .frame(width: 30, height: 20)
+        .shadow(color: .red.opacity(0.45), radius: 3)
     }
 }
 

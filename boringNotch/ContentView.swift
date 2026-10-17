@@ -36,6 +36,8 @@ struct ContentView: View {
     @Default(.useMusicVisualizer) var useMusicVisualizer
 
     @Default(.showNotHumanFace) var showNotHumanFace
+    @Default(.boringFaceStyles) var boringFaceStyles
+    @Default(.facePersonalityEnabled) var facePersonalityEnabled
 
     // Shared interactive spring for movement/resizing to avoid conflicting animations
     private let animationSpring = Animation.interactiveSpring(response: 0.38, dampingFraction: 0.8, blendDuration: 0)
@@ -377,7 +379,12 @@ struct ContentView: View {
                 Rectangle()
                     .fill(.black)
                     .frame(width: vm.closedNotchSize.width - 20)
-                MinimalFaceFeatures()
+                BoringFaceRosterView(
+                    styles: boringFaceStyles,
+                    personalityEnabled: facePersonalityEnabled,
+                    faceWidth: 24,
+                    faceHeight: 18
+                )
             }
         }.frame(
             height: vm.effectiveClosedNotchHeight,
